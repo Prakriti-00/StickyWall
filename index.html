@@ -495,6 +495,15 @@ let highestZ = 1;
 
 const canvas = document.getElementById("canvas");
 
+let saveTimeout;
+
+function debouncedSave() {
+  clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(() => {
+    saveNotes();
+  }, 500);
+}
+
 canvas.addEventListener("pointerdown", (e) => {
   if (isSelecting) return; // 👈 ADD THIS
   if (e.target.closest(".note")) return;
@@ -547,7 +556,7 @@ function showColorMenu(note, x, y) {
       const targetNote = notes.find(n => n.id === activeColorNoteId);
       if (!targetNote) return;
       targetNote.color = color;
-      saveNotes();
+      debouncedSave();
       hideColorMenu();
       renderNotes();
     });
@@ -606,7 +615,7 @@ function showPinToggle(note) {
   toggle.addEventListener("click", (e) => {
     e.stopPropagation();
     note.pinned = !note.pinned;
-    saveNotes();
+    debouncedSave();
     hideColorMenu();
     renderNotes();
   });
@@ -850,7 +859,7 @@ if (e.key === "Delete" && (selectedNotes.length > 0 || selectedNote)) {
   selectedNotes = [];
   selectedNote = null;
 
-  saveNotes();
+  debouncedSave();
   saveConnections();
   renderNotes();
 }
@@ -1065,17 +1074,17 @@ div.focus();
   note.z = highestZ;
   div.style.zIndex = highestZ;
 
-  saveNotes();
+  debouncedSave();
 });
     // EDIT TEXT
     titleDiv.addEventListener("input", () => {
       note.title = titleDiv.innerText;
-      saveNotes();
+      debouncedSave();
     });
 
     bodyDiv.addEventListener("input", () => {
       note.body = bodyDiv.innerText;
-      saveNotes();
+      debouncedSave();
     });
 
     bodyDiv.addEventListener("keydown", (e) => {
@@ -1127,7 +1136,7 @@ const y = pos.y;
   };
 
   notes.push(newNote);
-  saveNotes();
+  debouncedSave();
   renderNotes();
 };
 
@@ -1158,7 +1167,7 @@ function makeDraggable(el, note) {
     }
 
     function stop() {
-      saveNotes();
+      debouncedSave();
       document.removeEventListener("mousemove", move);
       document.removeEventListener("mouseup", stop);
     }
@@ -1212,7 +1221,7 @@ function makeResizable(el, note) {
     }
 
     function stop() {
-      saveNotes();
+      debouncedSave();
       el.contentEditable = true;
       document.removeEventListener("mousemove", resize);
       document.removeEventListener("mouseup", stop);
@@ -1226,9 +1235,10 @@ function makeResizable(el, note) {
 
 document.addEventListener("DOMContentLoaded", () => {
   const viewport = document.getElementById("viewport");
+  const canvas = document.getElementById("canvas");
 
-  const centerX = (10000 - viewport.clientWidth) / 2;
-  const centerY = (10000 - viewport.clientHeight) / 2;
+  const centerX = (canvas.offsetWidth - viewport.clientWidth) / 2;
+  const centerY = (canvas.offsetHeight - viewport.clientHeight) / 2;
 
   viewport.scrollLeft = centerX;
   viewport.scrollTop = centerY;
