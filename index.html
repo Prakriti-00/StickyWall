@@ -1,0 +1,1239 @@
+
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>sticky wall</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+  margin: 0;
+  font-family: 'Poppins', sans-serif;
+  overflow: auto;
+
+  background-color: #fdf6f9;
+  background-image: 
+  linear-gradient(rgba(38, 37, 37, 0.5) 1px, transparent 1px),
+  linear-gradient(90deg, rgba(38, 37, 37, 0.5) 1px, transparent 1px);
+  background-size: 20px 20px;
+  
+}
+
+
+#viewport {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: auto;
+  margin-top: 50px;
+
+}
+
+
+#connectionsLayer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none; /* visual only — never blocks clicks */
+  z-index: 0;
+}
+
+#connectionsHitLayer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none; /* SVG itself transparent; only hit-paths catch events */
+  z-index: 3;           /* above notes so lines are always clickable */
+}
+
+.connection-selected-visual {
+  stroke: #e53e3e !important;
+  stroke-width: 3.5 !important;
+  opacity: 1 !important;
+}
+
+.connection-delete-btn {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #e53e3e;
+  color: #fff;
+  border: 2px solid #fff;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  pointer-events: auto;
+  transition: transform 0.1s, background 0.1s;
+}
+.connection-delete-btn:hover {
+  background: #c53030;
+  transform: translate(-50%, -50%) scale(1.18);
+}
+
+#topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 50px;
+  background: #111;
+  color: white;
+
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+
+  align-items: center;
+  padding: 0 20px;
+  z-index: 9999;
+
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+#appTitle {
+  font-weight: 700;
+  font-size: 22px;   
+  justify-self: start;
+
+}
+
+.note {
+  will-change: transform;
+}
+
+#authSection {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+
+  justify-self: end;
+
+  max-width: 100%;
+}
+
+#authSection button {
+  padding: 5px 10px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+
+}
+
+#loginBtn {
+  background: #4caf50;
+  color: white;
+}
+
+#logoutBtn {
+  background: #f44336;
+  color: white;
+}
+
+#themeToggle {
+  justify-self: center;
+  height : 28px;
+  padding: 0px 12px;   
+  font-size: 18px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  background: #222;
+  color: #fff;
+  transition: all 0.2s ease;
+  line-height: 1;      /* 👈 important */
+
+
+}
+
+#themeToggle:hover {
+  transform: scale(1.08);
+}
+
+body.dark-mode #themeToggle {
+  background: #fff;   /* 👈 light button in dark mode */
+  color: #111;
+  border-color: rgba(255,255,255,0.2);
+}
+
+#canvas {
+  position: relative;
+  width: 20000px;
+  height: 20000px;
+  z-index: 1;
+}
+
+#selectionBox {
+  position: absolute;
+  border: 2px dashed #555;
+  background: rgba(100, 100, 100, 0.1);
+  pointer-events: none;
+  z-index: 9998;
+}
+
+#zoomLayer {
+  transform-origin: 0 0;
+  width: fit-content;
+  height: fit-content;
+}
+
+#loading {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: #111;
+  color: white;
+  transition: opacity 0.3s ease;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 22px;
+  font-weight: 500;
+  z-index: 99999;
+}
+
+.note {
+  position: absolute;
+  width: 160px;
+  height: 160px;
+  padding: 12px;
+  border:2px solid rgba(0,0,0,0.16);
+  border-radius: 16px;
+  background: #f7a9bb;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  cursor: grab;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  overflow: visible;
+  outline: none;
+  word-wrap: break-word;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dark-mode .note {
+  border-color: rgba(255,255,255,0.5);
+}
+
+.note-title {
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1.2;
+  margin: 0;
+  padding: 0;
+  outline: none;
+  color: #111;
+}
+
+.note-body {
+  font-size: 12px;
+  line-height: 1.3;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+  overflow: auto;
+  outline: none;
+  color: #111;
+}
+
+.dark-mode .note-title,
+.dark-mode .note-body {
+  color: #111;
+}
+
+.dark-mode .note.selected {
+  transform: translateY(-6px) scale(1.02);
+
+  outline: 3px solid #fff;        /* 👈 KEY FIX */
+  outline-offset: 2px;
+
+  box-shadow:
+    0 10px 25px rgba(0,0,0,0.8),
+    0 0 30px rgba(255,255,255,0.8);
+}
+.note-pin {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 20px;
+  pointer-events: none;
+  opacity: 0.95;
+  z-index: 5;
+  text-shadow: 0 0 2px rgba(255,255,255,0.8);
+}
+
+.pin-toggle {
+  margin-left: 6px;
+  padding: 4px 8px;
+  border: 1px solid rgba(0,0,0,0.2);
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.pin-toggle:hover {
+  background: #f2f2f2;
+}
+.note-separator {
+  height: 1px;
+  background: rgba(0,0,0,0.2);
+  border-radius: 1px;
+  margin: 2px 0;
+}
+.resizer {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  right: 2px;
+  bottom: 2px;
+  cursor: nwse-resize;
+  background: transparent;
+  z-index: 5;
+}
+
+.note:hover {
+  transform: translateY(-6px) scale(1.02);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+}
+
+.dark-mode .note:hover {
+  box-shadow: 0 10px 25px rgba(255,255,255,0.25);
+}
+
+.note:focus {
+  outline: none;
+}
+
+.note.selected {
+  transform: translateY(-6px) scale(1.02);
+
+  outline: 3px solid #000;        /* 👈 KEY FIX */
+  outline-offset: 2px;
+
+  box-shadow:
+    0 10px 25px rgba(0,0,0,0.35),
+    0 0 25px rgba(0,0,0,0.4);
+}
+.color-menu {
+  position: fixed;
+  z-index: 9999;
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(0,0,0,0.14);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+  pointer-events: auto;
+}
+
+.color-dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid rgba(0,0,0,0.1);
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+
+.color-dot:hover {
+  transform: scale(1.2);
+  border-color: rgba(0,0,0,0.35);
+}
+</style>
+</head>
+
+<body>
+<div id="topbar">
+  <div id="appTitle">StickyWall</div>
+
+  <button id="themeToggle">Light</button>
+
+  <div id="authSection">
+    <span id="userInfo"></span>
+    <button id="loginBtn">Login</button>
+    <button id="logoutBtn">Logout</button>
+  </div>
+</div>
+<div id="loading">Loading...</div>
+<div id="viewport">
+  <div id="zoomLayer">
+    <svg id="connectionsLayer"></svg>
+    <div id="canvas"></div>
+    <svg id="connectionsHitLayer"></svg>
+  </div>
+</div>
+
+<div id="colorMenu" class="color-menu" hidden></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<script>
+const firebaseConfig = {
+    apiKey: "AIzaSyBQYd8Nrt60xx1EgvxATI_alLf57z5d37Y",
+    authDomain: "stickywall-mess.firebaseapp.com",
+    projectId: "stickywall-mess",
+    storageBucket: "stickywall-mess.firebasestorage.app",
+    messagingSenderId: "1060566052403",
+    appId: "1:1060566052403:web:ab2ee9c0c8218cfffffd46"
+  };  
+
+const app = firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+
+document.addEventListener("DOMContentLoaded", () => {
+const provider = new firebase.auth.GoogleAuthProvider();
+provider.setCustomParameters({
+  prompt: "select_account"
+});
+  document.getElementById("loginBtn").onclick = () => {
+    console.log("clicked");
+
+    auth.signInWithPopup(provider)
+      .then(result => console.log("success"))
+      .catch(err => console.error(err));
+  };
+});
+
+auth.onAuthStateChanged(user => {
+  const userInfo = document.getElementById("userInfo");
+
+  if (user) {
+    window.currentUserId = user.uid;
+
+    userInfo.textContent = user.email;
+
+    //document.getElementById("loginBtn").style.display = "none";
+    document.getElementById("logoutBtn").style.display = "inline-block";
+
+    loadUserData(user.uid);
+
+  }
+  else {
+  window.currentUserId = null;
+
+  userInfo.textContent = "";
+
+  document.getElementById("loginBtn").style.display = "inline-block";
+
+  notes = [];
+  connections = [];
+
+  // ✅ ADD THIS
+  const loader = document.getElementById("loading");
+  loader.style.opacity = "0";
+  setTimeout(() => {
+    loader.style.display = "none";
+  }, 300);
+
+  renderNotes();
+}
+});
+
+function loadUserData(uid) {
+  db.collection("users").doc(uid).get()
+    .then(doc => {
+
+      // ✅ HIDE LOADING SCREEN
+      const loader = document.getElementById("loading");
+      loader.style.opacity = "0";
+
+      setTimeout(() => {
+        loader.style.display = "none";
+      }, 300);
+
+      if (doc.exists) {
+        const data = doc.data();
+        notes = data.notes || [];
+        connections = data.connections || [];
+        renderNotes();
+      } else {
+        renderNotes(); // still render empty state
+      }
+    })
+    .catch(err => {
+      console.error(err);
+      document.getElementById("loading").style.display = "none";
+    });
+}
+
+
+
+let selectedNote = null;
+let notes = [];
+let connections = [];
+let linkFromNoteId = null;
+let selectedConnectionKey = null; 
+let isSelecting = false;
+let selectionStartX = 0;
+let selectionStartY = 0;
+let selectionBox = null;
+let selectedNotes = [];
+let justSelected = false;
+
+let highestZ = 1;
+
+
+const canvas = document.getElementById("canvas");
+
+canvas.addEventListener("pointerdown", (e) => {
+  if (isSelecting) return; // 👈 ADD THIS
+  if (e.target.closest(".note")) return;
+
+  isSelecting = true;
+
+  const rect = canvas.getBoundingClientRect();
+
+const pos = getCanvasCoords(e.clientX, e.clientY);
+
+selectionStartX = pos.x;
+selectionStartY = pos.y;
+
+  selectionBox = document.createElement("div");
+  selectionBox.id = "selectionBox";
+  selectionBox.style.left = selectionStartX + "px";
+  selectionBox.style.top = selectionStartY + "px";
+
+  canvas.appendChild(selectionBox);
+});
+
+const connectionLayer = document.getElementById("connectionsLayer");
+const connectionHitLayer = document.getElementById("connectionsHitLayer");
+const colorMenu = document.getElementById("colorMenu");
+let activeColorNoteId = null;
+
+function getCanvasCoords(clientX, clientY) {
+  const rect = canvas.getBoundingClientRect();
+
+  return {
+    x: (clientX - rect.left + canvas.scrollLeft) / scale,
+    y: (clientY - rect.top + canvas.scrollTop) / scale
+  };
+}
+
+// 🎨 pastel colors
+const colors = ["#FFB3C6", "#CDB4DB", "#BDE0FE", "#A3F7BF", "#FFF5BA"];
+
+
+function showColorMenu(note, x, y) {
+  activeColorNoteId = note.id;
+  colorMenu.innerHTML = "";
+
+  colors.forEach(color => {
+    const dot = document.createElement("div");
+    dot.className = "color-dot";
+    dot.style.background = color;
+    dot.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const targetNote = notes.find(n => n.id === activeColorNoteId);
+      if (!targetNote) return;
+      targetNote.color = color;
+      saveNotes();
+      hideColorMenu();
+      renderNotes();
+    });
+    colorMenu.appendChild(dot);
+  });
+
+  const pinToggle = showPinToggle(note);
+  colorMenu.appendChild(pinToggle);
+
+  colorMenu.style.display = "flex";
+  colorMenu.hidden = false;
+  colorMenu.style.left = `${Math.min(x, window.innerWidth - 260)}px`;
+  colorMenu.style.top = `${Math.min(y, window.innerHeight - 120)}px`;
+}
+
+let scale = 1;
+
+const viewport = document.getElementById("viewport");
+const zoomLayer = document.getElementById("zoomLayer");
+
+viewport.addEventListener("wheel", (e) => {
+  // ONLY zoom when CTRL is pressed
+  if (!e.ctrlKey) return;
+
+  e.preventDefault();
+
+  const zoomSpeed = 0.002;
+  const newScale = Math.min(2.5, Math.max(0.1, scale - e.deltaY * zoomSpeed));
+
+  if (newScale === scale) return;
+
+  const rect = viewport.getBoundingClientRect();
+  const mouseX = e.clientX - rect.left;
+  const mouseY = e.clientY - rect.top;
+
+  const scaleChange = newScale / scale;
+
+  viewport.scrollLeft = (viewport.scrollLeft + mouseX) * scaleChange - mouseX;
+  viewport.scrollTop  = (viewport.scrollTop  + mouseY) * scaleChange - mouseY;
+
+  scale = newScale;
+  zoomLayer.style.transform = `scale(${scale})`;
+
+}, { passive: false });
+
+document.getElementById("logoutBtn").onclick = () => {
+  auth.signOut()
+    .then(() => console.log("Logged out"))
+    .catch(err => console.error(err));
+};
+
+function showPinToggle(note) {
+  const toggle = document.createElement("button");
+  toggle.className = "pin-toggle";
+  toggle.innerText = note.pinned ? "Unpin note" : "Pin note";
+  toggle.addEventListener("click", (e) => {
+    e.stopPropagation();
+    note.pinned = !note.pinned;
+    saveNotes();
+    hideColorMenu();
+    renderNotes();
+  });
+  return toggle;
+}
+
+function saveConnections() {
+  localStorage.setItem("connections", JSON.stringify(connections));
+}
+
+function hideColorMenu() {
+  activeColorNoteId = null;
+  colorMenu.hidden = true;
+  colorMenu.style.display = "none";
+}
+
+// ─── Delete button for selected connection ────────────────────────────────
+let deleteBtn = null;
+
+function removeDeleteBtn() {
+  if (deleteBtn) { deleteBtn.remove(); deleteBtn = null; }
+}
+
+function showDeleteBtn(x1, y1, x2, y2, connKey) {
+  removeDeleteBtn();
+  const mx = (x1 + x2) / 2;
+  const my = (y1 + y2) / 2;
+
+  deleteBtn = document.createElement("button");
+  deleteBtn.className = "connection-delete-btn";
+  deleteBtn.title = "Delete connection";
+  deleteBtn.innerHTML = "✕";
+  deleteBtn.style.left = mx + "px";
+  deleteBtn.style.top  = my + "px";
+
+  deleteBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const [fId, tId] = connKey.split("->").map(Number);
+    connections = connections.filter(c => !(c.from === fId && c.to === tId));
+    selectedConnectionKey = null;
+    removeDeleteBtn();
+    saveConnections();
+    renderConnections();
+  });
+
+  canvas.appendChild(deleteBtn);
+}
+
+// ─── Dual-layer render ────────────────────────────────────────────────────
+function renderConnections() {
+  connectionLayer.innerHTML    = "";
+  connectionHitLayer.innerHTML = "";
+  // remove stale delete btn; will be recreated below if still needed
+  removeDeleteBtn();
+
+  const dark = document.body.classList.contains('dark-mode');
+
+  connections.forEach(conn => {
+    const from = notes.find(n => n.id === conn.from);
+    const to   = notes.find(n => n.id === conn.to);
+    if (!from || !to) return;
+
+    const x1 = from.x + from.width  / 2;
+    const y1 = from.y + from.height / 2;
+    const x2 = to.x   + to.width    / 2;
+    const y2 = to.y   + to.height   / 2;
+
+    const key = `${conn.from}->${conn.to}`;
+    const isSelected = (selectedConnectionKey === key);
+
+    // ── Visual line (behind notes, pointer-events: none inherited from SVG) ──
+    const vLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    vLine.setAttribute("x1", x1); vLine.setAttribute("y1", y1);
+    vLine.setAttribute("x2", x2); vLine.setAttribute("y2", y2);
+    vLine.setAttribute("stroke", isSelected ? "#e53e3e" : (dark ? "#fff" : "#333"));
+    vLine.setAttribute("stroke-width",  isSelected ? "3.5" : "2");
+    vLine.setAttribute("stroke-linecap", "round");
+    vLine.setAttribute("opacity", isSelected ? "1" : "0.85");
+    if (isSelected) vLine.setAttribute("stroke-dasharray", "6 3");
+    vLine.setAttribute("data-from", conn.from);
+    vLine.setAttribute("data-to",   conn.to);
+    vLine.classList.add("connection-line");
+    connectionLayer.appendChild(vLine);
+
+    // ── Hit line (above notes, fat invisible stroke for easy clicking) ──
+    const hLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    hLine.setAttribute("x1", x1); hLine.setAttribute("y1", y1);
+    hLine.setAttribute("x2", x2); hLine.setAttribute("y2", y2);
+    hLine.setAttribute("stroke", "transparent");
+    hLine.setAttribute("stroke-width", "16"); // fat hit area
+    hLine.setAttribute("stroke-linecap", "round");
+    hLine.style.pointerEvents = "stroke";
+    hLine.style.cursor = "pointer";
+    hLine.setAttribute("data-key", key);
+    hLine.classList.add("connection-hit");
+
+    hLine.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (selectedConnectionKey === key) {
+        // second click → deselect
+        selectedConnectionKey = null;
+        removeDeleteBtn();
+      } else {
+        selectedConnectionKey = key;
+        showDeleteBtn(x1, y1, x2, y2, key);
+      }
+      renderConnections();
+    });
+
+    connectionHitLayer.appendChild(hLine);
+
+    // Recreate delete btn for still-selected connection
+    if (isSelected) {
+      showDeleteBtn(x1, y1, x2, y2, key);
+    }
+  });
+}
+
+function addConnection(fromId, toId) {
+  // prevent self connection
+  if (fromId === toId) return;
+
+  // prevent duplicates
+  const exists = connections.some(c => c.from === fromId && c.to === toId);
+  if (exists) return;
+
+  connections.push({
+    from: fromId,
+    to: toId
+  });
+
+  saveConnections();
+}
+
+function highlightConnections(noteId, on) {
+  connectionLayer.querySelectorAll('.connection-line').forEach(line => {
+    const from = line.getAttribute('data-from');
+    const to   = line.getAttribute('data-to');
+    if (from === String(noteId) || to === String(noteId)) {
+      const dark = document.body.classList.contains('dark-mode');
+      line.setAttribute('stroke-width', on ? '3.3' : '2');
+      line.setAttribute('opacity',      on ? '1'   : '0.85');
+      line.setAttribute('stroke', dark ? (on ? '#fefefe' : '#fff') : '#333');
+      line.setAttribute('filter', on ? 'drop-shadow(0 0 6px rgba(0,0,0,0.35))' : 'none');
+    }
+  });
+}
+
+document.addEventListener("click", (e) => {
+  const clickedOnNote = e.target.closest('.note');
+  const clickedOnUI =
+    e.target.closest('#colorMenu') ||
+    e.target.closest('.connection-hit') ||
+    e.target.closest('.connection-delete-btn');
+
+  if (!clickedOnNote && !clickedOnUI) {
+
+    // ❗ only clear if NOT from drag selection
+    if (!justSelected) {
+      selectedNote = null;
+      selectedNotes = [];
+
+      document.querySelectorAll('.note').forEach(n =>
+        n.classList.remove('selected')
+      );
+    }
+
+    // clear selected connection
+    if (selectedConnectionKey) {
+      selectedConnectionKey = null;
+      removeDeleteBtn();
+      renderConnections();
+    }
+  }
+
+  hideColorMenu();
+});
+
+window.addEventListener("keydown", (e) => {
+  if (e.key === "Delete") {
+  e.preventDefault();
+}
+  const isTyping = e.target.isContentEditable;
+
+if (isTyping && e.key !== "Delete" && !(e.ctrlKey && e.key.toLowerCase() === "l")) {
+  return; // allow normal typing
+}
+  if (e.key === "Escape") {
+    hideColorMenu();
+    linkFromNoteId = null;
+    if (selectedConnectionKey) {
+      selectedConnectionKey = null;
+      removeDeleteBtn();
+      renderConnections();
+    }
+    return;
+  }
+
+if (e.ctrlKey && e.key.toLowerCase() === "l") {
+  e.preventDefault();
+
+  const active = selectedNotes[0] || selectedNote;
+
+  if (!active) {
+    console.log("No note selected");
+    return;
+  }
+
+  linkFromNoteId = active.id;
+  console.log("Link started from:", linkFromNoteId);
+}
+  if (e.key === "Delete" && selectedConnectionKey) {
+    const [fId, tId] = selectedConnectionKey.split("->").map(Number);
+    connections = connections.filter(c => !(c.from === fId && c.to === tId));
+    selectedConnectionKey = null;
+    removeDeleteBtn();
+    saveConnections();
+    renderConnections();
+    return;
+  }
+  // 🔴 MULTI DELETE NOTES
+
+if (e.key === "Delete" && (selectedNotes.length > 0 || selectedNote)) {
+
+  const notesToDelete = selectedNotes.length > 0
+    ? selectedNotes
+    : [selectedNote];
+
+  const confirmDelete = confirm(`Delete ${notesToDelete.length} note(s)?`);
+  if (!confirmDelete) return;
+
+  const idsToDelete = notesToDelete.map(n => n.id);
+
+  notes = notes.filter(n => !idsToDelete.includes(n.id));
+
+  connections = connections.filter(c =>
+    !idsToDelete.includes(c.from) &&
+    !idsToDelete.includes(c.to)
+  );
+
+  selectedNotes = [];
+  selectedNote = null;
+
+  saveNotes();
+  saveConnections();
+  renderNotes();
+}
+
+});
+
+document.addEventListener("pointermove", (e) => {
+  if (!isSelecting || !selectionBox) return;
+
+  const rect = canvas.getBoundingClientRect();
+
+const pos = getCanvasCoords(e.clientX, e.clientY);
+
+const currentX = pos.x;
+const currentY = pos.y;
+
+  const x = Math.min(currentX, selectionStartX);
+  const y = Math.min(currentY, selectionStartY);
+  const width = Math.abs(currentX - selectionStartX);
+  const height = Math.abs(currentY - selectionStartY);
+
+  selectionBox.style.left = x + "px";
+  selectionBox.style.top = y + "px";
+  selectionBox.style.width = width + "px";
+  selectionBox.style.height = height + "px";
+});
+
+document.addEventListener("pointerup", () => {
+  if (!isSelecting) return;
+
+  isSelecting = false;
+
+  if (!selectionBox) return;
+
+  const boxRect = selectionBox.getBoundingClientRect();
+
+  // 🔴 MULTI SELECT LOGIC (correct place)
+  selectedNotes = [];
+  justSelected = true;
+setTimeout(() => justSelected = false, 0);
+
+  document.querySelectorAll(".note").forEach(n => n.classList.remove("selected"));
+
+  document.querySelectorAll(".note").forEach(noteEl => {
+    const noteRect = noteEl.getBoundingClientRect();
+
+    const overlap = !(
+      noteRect.right < boxRect.left ||
+      noteRect.left > boxRect.right ||
+      noteRect.bottom < boxRect.top ||
+      noteRect.top > boxRect.bottom
+    );
+
+    if (overlap) {
+      noteEl.classList.add("selected");
+
+      const noteId = noteEl.dataset.id;
+      const noteObj = notes.find(n => String(n.id) === noteId);
+
+      if (noteObj) selectedNotes.push(noteObj);
+    }
+  });
+
+  selectionBox.remove();
+  selectionBox = null;
+  selectedNote = selectedNotes[0] || null;
+});
+
+const themeToggle = document.getElementById('themeToggle');
+function setTheme(dark) {
+  document.body.classList.toggle('dark-mode', dark);
+  const body = document.body;
+  if (dark) {
+    body.style.backgroundColor = '#111';
+    body.style.color = '#fff';
+    body.style.backgroundImage = 'linear-gradient(rgba(255,255,255,0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.2) 1px, transparent 1px)';
+    body.style.backgroundSize = '20px 20px';
+    themeToggle.innerText = '☀️';
+  } else {
+    body.style.backgroundColor = '#fdf6f9';
+    body.style.color = '#111';
+    body.style.backgroundImage = 'linear-gradient(rgba(38, 37, 37, 0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(38, 37, 37, 0.5) 1px, transparent 1px)';
+    body.style.backgroundSize = '20px 20px';
+    themeToggle.innerText = '🌙';
+  }
+  renderConnections();
+}
+
+themeToggle.addEventListener('click', () => {
+  const dark = !document.body.classList.contains('dark-mode');
+  localStorage.setItem('darkMode', JSON.stringify(dark));
+  setTheme(dark);
+});
+
+const savedTheme = JSON.parse(localStorage.getItem('darkMode')) || false;
+setTheme(savedTheme);
+
+// SAVE
+function saveNotes() {
+  if (!window.currentUserId) {
+    console.log("No user yet");
+    return;
+  }
+
+  console.log("Saving to Firebase...");
+
+  db.collection("users")
+    .doc(window.currentUserId)
+    .set({
+      notes: notes,
+      connections: connections
+    })
+    .then(() => console.log("Saved to Firebase"))
+    .catch(err => console.error(err));
+}
+
+// RENDER
+function renderNotes() {
+  canvas.innerHTML = "";
+
+  notes.forEach(note => {
+    const div = document.createElement("div");
+    div.className = "note";
+    div.tabIndex = 0;   // 👈 makes it focusable
+    div.contentEditable = true;
+    div.style.zIndex = note.z || 1;
+    div.style.left = note.x + "px";
+    div.style.top = note.y + "px";
+    div.style.width = note.width + "px";
+    div.style.height = note.height + "px";
+    div.style.background = note.color;
+
+    note.pinned = Boolean(note.pinned);
+
+    const titleDiv = document.createElement('div');
+    titleDiv.className = 'note-title';
+    titleDiv.contentEditable = true;
+    titleDiv.innerText = note.title || 'title';
+
+    const separator = document.createElement('div');
+    separator.className = 'note-separator';
+    separator.contentEditable = false;
+
+    const bodyDiv = document.createElement('div');
+    bodyDiv.className = 'note-body';
+    bodyDiv.contentEditable = true;
+    bodyDiv.innerText = note.body || '...';
+    bodyDiv.style.color = '#111';
+    titleDiv.style.color = '#111';
+
+    if (note.pinned) {
+      const pinIcon = document.createElement('div');
+      pinIcon.className = 'note-pin';
+      pinIcon.innerText = '📌';
+      div.appendChild(pinIcon);
+    }
+
+    const minSize = 12;
+    const maxSize = 24;
+    const ratio = Math.min(note.width / 160, note.height / 160);
+    const curve = Math.pow(ratio, 1.4);
+    const scaledTitle = Math.round(Math.max(minSize + 2, Math.min(maxSize, 16 * curve)));
+    const scaledBody = Math.round(Math.max(minSize, Math.min(maxSize, 12 * curve)));
+    titleDiv.style.fontSize = `${scaledTitle}px`;
+    bodyDiv.style.fontSize = `${scaledBody}px`;
+    div.appendChild(titleDiv);
+    div.appendChild(separator);
+    div.appendChild(bodyDiv);
+    div.dataset.id = note.id;
+    div.contentEditable = false;
+
+    div.addEventListener("mouseenter", () => {
+      highlightConnections(note.id, true);
+    });
+    div.addEventListener("mouseleave", () => {
+      highlightConnections(note.id, false);
+    });
+
+    div.addEventListener("click", (e) => {
+  e.stopPropagation();
+
+  if (linkFromNoteId && linkFromNoteId !== note.id) {
+    addConnection(linkFromNoteId, note.id);
+    linkFromNoteId = null;
+    renderConnections();
+    return;
+  }
+
+// remove old selection if NOT shift
+if (!e.shiftKey) {
+  document.querySelectorAll(".note").forEach(n => {
+    n.classList.remove("selected");
+  });
+  selectedNotes = [];
+}
+
+// add current note
+selectedNotes = selectedNotes.filter(n => n.id !== note.id);
+selectedNotes.push(note);
+
+selectedNote = note;
+
+// apply visual selection
+div.classList.add("selected");
+
+// focus for keyboard
+document.activeElement.blur();
+div.focus();
+
+  // 👇 bring to front
+  highestZ++;
+  note.z = highestZ;
+  div.style.zIndex = highestZ;
+
+  saveNotes();
+});
+    // EDIT TEXT
+    titleDiv.addEventListener("input", () => {
+      note.title = titleDiv.innerText;
+      saveNotes();
+    });
+
+    bodyDiv.addEventListener("input", () => {
+      note.body = bodyDiv.innerText;
+      saveNotes();
+    });
+
+    bodyDiv.addEventListener("keydown", (e) => {
+      if (e.key === "Delete") {
+        e.preventDefault();
+}
+      if (e.key === "Backspace" && bodyDiv.innerText.trim().length === 0) {
+        e.preventDefault();
+      }
+    });
+
+    // DELETE
+    // We'll handle delete and deselect globally outside the render loop.
+    div.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      showColorMenu(note, e.clientX, e.clientY);
+    });
+    makeDraggable(div, note);
+    makeResizable(div, note);
+
+    canvas.appendChild(div);
+  });
+  renderConnections();
+}
+
+// CREATE NOTE (double click anywhere)
+canvas.ondblclick = (e) => {
+  if (e.target.classList.contains("note")) return;
+
+  const rect = canvas.getBoundingClientRect();
+
+const pos = getCanvasCoords(e.clientX, e.clientY);
+
+const x = pos.x;
+const y = pos.y;
+
+  const newNote = {
+    id: Date.now(),
+    text: "...",
+    x: x,
+    y: y,
+    width: 160,
+    height: 160,
+    color: "#FFB6C1",
+    title: "title",
+    body: "...",
+    pinned: false
+  };
+
+  notes.push(newNote);
+  saveNotes();
+  renderNotes();
+};
+
+// DRAG
+function makeDraggable(el, note) {
+  el.addEventListener("mousedown", (e) => {
+    if (note.pinned) return;
+
+    highestZ++;
+    note.z = highestZ;
+    el.style.zIndex = highestZ;
+
+    const start = getCanvasCoords(e.clientX, e.clientY);
+
+    const offsetX = start.x - note.x;
+    const offsetY = start.y - note.y;
+
+    function move(e) {
+      const pos = getCanvasCoords(e.clientX, e.clientY);
+
+      note.x = pos.x - offsetX;
+      note.y = pos.y - offsetY;
+
+      el.style.left = note.x + "px";
+      el.style.top = note.y + "px";
+
+      renderConnections();
+    }
+
+    function stop() {
+      saveNotes();
+      document.removeEventListener("mousemove", move);
+      document.removeEventListener("mouseup", stop);
+    }
+
+    document.addEventListener("mousemove", move);
+    document.addEventListener("mouseup", stop);
+  });
+}
+
+// RESIZE
+function makeResizable(el, note) {
+  const resizer = document.createElement("div");
+  resizer.className = "resizer";
+  el.appendChild(resizer);
+
+  resizer.addEventListener("mousedown", (e) => {
+    e.stopPropagation();
+
+    if (note.pinned) return;
+
+    selectedNote = note;
+    document.querySelectorAll(".note").forEach(n => n.classList.remove("selected"));
+    el.classList.add("selected");
+
+    // disable editing while resizing
+    el.contentEditable = false;
+
+    let startX = e.clientX;
+    let startY = e.clientY;
+    let startWidth = note.width;
+    let startHeight = note.height;
+
+    function resize(e) {
+      let dx = e.clientX - startX;
+      let dy = e.clientY - startY;
+
+      note.width = Math.max(80, startWidth + dx);
+      note.height = Math.max(80, startHeight + dy);
+
+      el.style.width = note.width + "px";
+      el.style.height = note.height + "px";
+
+      const ratio = Math.min(note.width / 160, note.height / 160);
+      const curve = Math.pow(ratio, 1.4);
+      const titleSize = Math.round(Math.max(14, Math.min(30, 16 * curve)));
+      const bodySize = Math.round(Math.max(12, Math.min(26, 12 * curve)));
+      const titleDiv = el.querySelector('.note-title');
+      const bodyDiv = el.querySelector('.note-body');
+      if (titleDiv) titleDiv.style.fontSize = `${titleSize}px`;
+      if (bodyDiv) bodyDiv.style.fontSize = `${bodySize}px`;
+    }
+
+    function stop() {
+      saveNotes();
+      el.contentEditable = true;
+      document.removeEventListener("mousemove", resize);
+      document.removeEventListener("mouseup", stop);
+    }
+
+    document.addEventListener("mousemove", resize);
+    document.addEventListener("mouseup", stop);
+  });
+}
+
+
+document.addEventListener("DOMContentLoaded", () => {
+  const viewport = document.getElementById("viewport");
+
+  const centerX = (10000 - viewport.clientWidth) / 2;
+  const centerY = (10000 - viewport.clientHeight) / 2;
+
+  viewport.scrollLeft = centerX;
+  viewport.scrollTop = centerY;
+});
+</script>
+
+</body>
+</html>
