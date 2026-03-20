@@ -1144,41 +1144,45 @@ const y = pos.y;
 };
 
 // DRAG
-function makeDraggable(el, note) {
-  el.addEventListener("mousedown", (e) => {
-    if (note.pinned) return;
+el.addEventListener("pointerdown", (e) => {
+  if (note.pinned) return;
 
-    highestZ++;
-    note.z = highestZ;
-    el.style.zIndex = highestZ;
+  highestZ++;
+  note.z = highestZ;
+  el.style.zIndex = highestZ;
 
-    const start = getCanvasCoords(e.clientX, e.clientY);
+  const start = getCanvasCoords(e.clientX, e.clientY);
 
-    const offsetX = start.x - note.x;
-    const offsetY = start.y - note.y;
+  const offsetX = start.x - note.x;
+  const offsetY = start.y - note.y;
 
-    function move(e) {
-      const pos = getCanvasCoords(e.clientX, e.clientY);
+  el.setPointerCapture(e.pointerId);
 
-      note.x = pos.x - offsetX;
-      note.y = pos.y - offsetY;
+  function move(e) {
+    const pos = getCanvasCoords(e.clientX, e.clientY);
 
-      el.style.left = note.x + "px";
-      el.style.top = note.y + "px";
+    note.x = pos.x - offsetX;
+    note.y = pos.y - offsetY;
 
-      renderConnections();
-    }
+    el.style.left = note.x + "px";
+    el.style.top = note.y + "px";
 
-    function stop() {
-      debouncedSave();
-      document.removeEventListener("mousemove", move);
-      document.removeEventListener("mouseup", stop);
-    }
+    renderConnections();
+  }
 
-    document.addEventListener("mousemove", move);
-    document.addEventListener("mouseup", stop);
-  });
-}
+  function stop(e) {
+    el.releasePointerCapture(e.pointerId);
+
+    el.removeEventListener("pointermove", move);
+    el.removeEventListener("pointerup", stop);
+
+    debouncedSave();
+  }
+
+  el.addEventListener("pointermove", move);
+  el.addEventListener("pointerup", stop);
+});
+
 
 // RESIZE
 function makeResizable(el, note) {
