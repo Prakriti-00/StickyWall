@@ -29,7 +29,8 @@ User data is persisted using Firebase, with authentication handled through Googl
 
 ## Live Demo
 
-https://bucolic-klepon-ac6ddf.netlify.app
+https://stickywallxo.surge.sh
+
 
 ## Architecture
 
