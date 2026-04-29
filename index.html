@@ -1,10 +1,17 @@
 
 
+
 <!DOCTYPE html>
 <html>
 <head>
   <link rel="icon" href="favicon.png">
   <title>sticky wall</title>
+  <title>StickyWall</title>
+
+<meta property="og:title" content="StickyWall - Interactive Notes App">
+<meta property="og:description" content="A minimal interactive sticky notes web app">
+<meta property="og:url" content="https://stickywallxo.surge.sh">
+<meta property="og:type" content="website">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
@@ -1144,45 +1151,41 @@ const y = pos.y;
 };
 
 // DRAG
-el.addEventListener("pointerdown", (e) => {
-  if (note.pinned) return;
+function makeDraggable(el, note) {
+  el.addEventListener("mousedown", (e) => {
+    if (note.pinned) return;
 
-  highestZ++;
-  note.z = highestZ;
-  el.style.zIndex = highestZ;
+    highestZ++;
+    note.z = highestZ;
+    el.style.zIndex = highestZ;
 
-  const start = getCanvasCoords(e.clientX, e.clientY);
+    const start = getCanvasCoords(e.clientX, e.clientY);
 
-  const offsetX = start.x - note.x;
-  const offsetY = start.y - note.y;
+    const offsetX = start.x - note.x;
+    const offsetY = start.y - note.y;
 
-  el.setPointerCapture(e.pointerId);
+    function move(e) {
+      const pos = getCanvasCoords(e.clientX, e.clientY);
 
-  function move(e) {
-    const pos = getCanvasCoords(e.clientX, e.clientY);
+      note.x = pos.x - offsetX;
+      note.y = pos.y - offsetY;
 
-    note.x = pos.x - offsetX;
-    note.y = pos.y - offsetY;
+      el.style.left = note.x + "px";
+      el.style.top = note.y + "px";
 
-    el.style.left = note.x + "px";
-    el.style.top = note.y + "px";
+      renderConnections();
+    }
 
-    renderConnections();
-  }
+    function stop() {
+      debouncedSave();
+      document.removeEventListener("mousemove", move);
+      document.removeEventListener("mouseup", stop);
+    }
 
-  function stop(e) {
-    el.releasePointerCapture(e.pointerId);
-
-    el.removeEventListener("pointermove", move);
-    el.removeEventListener("pointerup", stop);
-
-    debouncedSave();
-  }
-
-  el.addEventListener("pointermove", move);
-  el.addEventListener("pointerup", stop);
-});
-
+    document.addEventListener("mousemove", move);
+    document.addEventListener("mouseup", stop);
+  });
+}
 
 // RESIZE
 function makeResizable(el, note) {
